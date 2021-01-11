@@ -28,6 +28,11 @@ There is a timestamp helper class to help derive last modified time of an Assemb
 ```cs
 public static class Timestamp
 {
+    public static string ToUniqueString(this DateTime dateTime)
+    {
+        return dateTime.ToString("yyyy-MM-ddThh-mm-tt");
+    }
+
     public static DateTime LastModified(Delegate @delegate)
     {
         Guard.AgainstNull(nameof(@delegate), @delegate);
@@ -52,5 +57,5 @@ public static class Timestamp
     }
 }
 ```
-<sup><a href='/src/LocalDb/Timestamp.cs#L11-L37' title='Snippet source file'>snippet source</a> | <a href='#snippet-timestamp' title='Start of snippet'>anchor</a></sup>
+<sup><a href='/src/LocalDb/Timestamp.cs#L11-L42' title='Snippet source file'>snippet source</a> | <a href='#snippet-timestamp' title='Start of snippet'>anchor</a></sup>
 <!-- endSnippet -->

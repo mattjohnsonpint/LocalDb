@@ -29,7 +29,7 @@ namespace EfLocalDb
             ConstructInstance<TDbContext> constructInstance,
             TemplateFromContext<TDbContext>? buildTemplate = null,
             Storage? storage = null,
-            DateTime? timestamp = null,
+            string? uniqueness = null,
             ushort templateSize = 3,
             ExistingTemplate? existingTemplate = null,
             Callback<TDbContext>? callback = null):
@@ -37,7 +37,7 @@ namespace EfLocalDb
                 constructInstance,
                 BuildTemplateConverter.Convert(constructInstance, buildTemplate),
                 storage,
-                GetTimestamp(timestamp, buildTemplate),
+                GetUniqueness(uniqueness, buildTemplate),
                 templateSize,
                 existingTemplate,
                 callback)
@@ -48,14 +48,14 @@ namespace EfLocalDb
             ConstructInstance<TDbContext> constructInstance,
             TemplateFromConnection buildTemplate,
             Storage? storage = null,
-            DateTime? timestamp = null,
+            string? uniqueness = null,
             ushort templateSize = 3,
             ExistingTemplate? existingTemplate = null,
             Callback<TDbContext>? callback = null)
         {
             storage ??= DefaultStorage;
 
-            var resultTimestamp = GetTimestamp(timestamp, buildTemplate);
+            var resultUniqueness = GetUniqueness(uniqueness, buildTemplate);
             Guard.AgainstNull(nameof(constructInstance), constructInstance);
             this.constructInstance = constructInstance;
 
@@ -78,22 +78,22 @@ namespace EfLocalDb
                 templateSize,
                 existingTemplate,
                 wrapperCallback);
-            Wrapper.Start(resultTimestamp, connection => buildTemplate(connection));
+            Wrapper.Start(resultUniqueness, connection => buildTemplate(connection));
         }
 
-        static DateTime GetTimestamp(DateTime? timestamp, Delegate? buildTemplate)
+        static string GetUniqueness(string? uniqueness, Delegate? buildTemplate)
         {
-            if (timestamp != null)
+            if (uniqueness != null)
             {
-                return timestamp.Value;
+                return uniqueness;
             }
 
             if (buildTemplate != null)
             {
-                return Timestamp.LastModified(buildTemplate);
+                return Timestamp.LastModified(buildTemplate).ToUniqueString();
             }
 
-            return Timestamp.LastModified<TDbContext>();
+            return Timestamp.LastModified<TDbContext>().ToUniqueString();
         }
 
         public void Cleanup() => Wrapper.DeleteInstance();

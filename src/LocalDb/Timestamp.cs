@@ -11,6 +11,11 @@ namespace LocalDb
     #region Timestamp
     public static class Timestamp
     {
+        public static string ToUniqueString(this DateTime dateTime)
+        {
+            return dateTime.ToString("yyyy-MM-ddThh-mm-tt");
+        }
+
         public static DateTime LastModified(Delegate @delegate)
         {
             Guard.AgainstNull(nameof(@delegate), @delegate);

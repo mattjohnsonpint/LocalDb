@@ -106,17 +106,17 @@ public class Tests
     }
 
     [Fact]
-    public async Task Defined_TimeStamp()
+    public async Task Defined_Uniqueness()
     {
-        var dateTime = DateTime.Now;
+        var uniqueness = DateTime.Now.ToUniqueString();
         SqlInstance<TestDbContext> instance = new(
             constructInstance: connection => new(connection),
             buildTemplate: async context => { await context.CreateOnExistingDb(); },
-            timestamp: dateTime,
-            storage: Storage.FromSuffix<TestDbContext>($"Defined_TimeStamp_Net{Environment.Version.Major}"));
+            uniqueness: uniqueness,
+            storage: Storage.FromSuffix<TestDbContext>($"Defined_Uniqueness_Net{Environment.Version.Major}"));
 
         using var database = await instance.Build();
-        Assert.Equal(dateTime, File.GetCreationTime(instance.Wrapper.DataFile));
+        Assert.Equal(uniqueness, await File.ReadAllTextAsync(instance.Wrapper.UniquenessFile));
     }
 
     [Fact]
@@ -127,7 +127,7 @@ public class Tests
             storage: Storage.FromSuffix<TestDbContext>($"Assembly_TimeStamp{Environment.Version.Major}"));
 
         using var database = await instance.Build();
-        Assert.Equal(Timestamp.LastModified<Tests>(), File.GetCreationTime(instance.Wrapper.DataFile));
+        Assert.Equal(Timestamp.LastModified<Tests>().ToUniqueString(), await File.ReadAllTextAsync(instance.Wrapper.UniquenessFile));
     }
 
     [Fact]
@@ -139,7 +139,7 @@ public class Tests
             storage: Storage.FromSuffix<TestDbContext>($"Delegate_TimeStamp{Environment.Version.Major}"));
 
         using var database = await instance.Build();
-        Assert.Equal(Timestamp.LastModified<Tests>(), File.GetCreationTime(instance.Wrapper.DataFile));
+        Assert.Equal(Timestamp.LastModified<Tests>().ToUniqueString(), await File.ReadAllTextAsync(instance.Wrapper.UniquenessFile));
     }
 
     [Fact]

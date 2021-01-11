@@ -50,16 +50,16 @@ public class Tests
     //}
 
     [Fact]
-    public async Task Defined_TimeStamp()
+    public async Task Defined_Uniqueness()
     {
         var dateTime = DateTime.Now;
         SqlInstance instance = new(
             name: "Defined_TimeStamp",
             buildTemplate: TestDbBuilder.CreateTable,
-            timestamp: dateTime);
+            uniqueness: "Defined_TimeStamp");
 
         await using var database = await instance.Build();
-        Assert.Equal(dateTime, File.GetCreationTime(instance.Wrapper.DataFile));
+        Assert.Equal("Defined_Uniqueness", await File.ReadAllTextAsync(instance.Wrapper.UniquenessFile));
     }
 
     [Fact]
@@ -70,7 +70,7 @@ public class Tests
             buildTemplate: TestDbBuilder.CreateTable);
 
         await using var database = await instance.Build();
-        Assert.Equal(Timestamp.LastModified<Tests>(), File.GetCreationTime(instance.Wrapper.DataFile));
+        Assert.Equal(Timestamp.LastModified<Tests>().ToUniqueString(), await File.ReadAllTextAsync(instance.Wrapper.UniquenessFile));
     }
 
     [Fact]

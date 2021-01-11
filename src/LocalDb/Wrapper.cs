@@ -22,6 +22,7 @@ class Wrapper
     Func<string, DbConnection> buildConnection;
     string instance;
     public readonly string DataFile;
+    public readonly string UniquenessFile;
     string LogFile;
     string TemplateConnectionString;
     public readonly string ServerName;
@@ -62,6 +63,7 @@ class Wrapper
             DataFile = existingTemplate.Value.DataPath;
             LogFile = existingTemplate.Value.LogPath;
         }
+        UniquenessFile = Path.Combine(directory, "uniqueness.txt");
 
         var directoryInfo = System.IO.Directory.CreateDirectory(directory);
         directoryInfo.ResetAccess();
@@ -132,14 +134,14 @@ class Wrapper
         }
     }
 
-    public void Start(DateTime timestamp, Func<DbConnection, Task> buildTemplate)
+    public void Start(string uniqueness, Func<DbConnection, Task> buildTemplate)
     {
 #if RELEASE
         try
         {
 #endif
         var stopwatch = Stopwatch.StartNew();
-        InnerStart(timestamp, buildTemplate);
+        InnerStart(uniqueness, buildTemplate);
         var message = $"Start `{ServerName}` {stopwatch.ElapsedMilliseconds}ms.";
 
         LocalDbLogging.Log(message);
@@ -157,7 +159,7 @@ class Wrapper
         return startupTask;
     }
 
-    void InnerStart(DateTime timestamp, Func<DbConnection, Task> buildTemplate)
+    void InnerStart(string uniqueness, Func<DbConnection, Task> buildTemplate)
     {
         void CleanStart()
         {
@@ -165,7 +167,7 @@ class Wrapper
             LocalDbApi.CreateInstance(instance);
             LocalDbApi.StartInstance(instance);
             startupTask = CreateAndDetachTemplate(
-                timestamp,
+                uniqueness,
                 buildTemplate,
                 rebuild: true,
                 optimize: true);
@@ -194,23 +196,28 @@ class Wrapper
             return;
         }
 
-        var templateLastMod = File.GetCreationTime(DataFile);
-        if (timestamp == templateLastMod)
+        string? templateUniqueness = null;
+        if (File.Exists(UniquenessFile))
+        {
+            templateUniqueness = File.ReadAllText(UniquenessFile);
+        }
+
+        if (uniqueness == templateUniqueness)
         {
             LocalDbLogging.LogIfVerbose("Not modified so skipping rebuild");
-            startupTask = CreateAndDetachTemplate(timestamp, buildTemplate, false, false);
+            startupTask = CreateAndDetachTemplate(uniqueness, buildTemplate, false, false);
         }
         else
         {
-            startupTask = CreateAndDetachTemplate(timestamp, buildTemplate, true, false);
+            startupTask = CreateAndDetachTemplate(uniqueness, buildTemplate, true, false);
         }
 
         InitRollbackTask();
     }
 
-    [Time("Timestamp: '{timestamp}', Rebuild: '{rebuild}', Optimize: '{optimize}'")]
+    [Time("Uniqueness: '{uniqueness}', Rebuild: '{rebuild}', Optimize: '{optimize}'")]
     async Task CreateAndDetachTemplate(
-        DateTime timestamp,
+        string uniqueness,
         Func<DbConnection, Task> buildTemplate,
         bool rebuild,
         bool optimize)
@@ -236,7 +243,7 @@ class Wrapper
 
         if (rebuild && !templateProvided)
         {
-            await Rebuild(timestamp, buildTemplate, masterConnection);
+            await Rebuild(uniqueness, buildTemplate, masterConnection);
         }
 
         await takeDbsOffline;
@@ -249,7 +256,7 @@ class Wrapper
         return connection;
     }
 
-    async Task Rebuild(DateTime timestamp, Func<DbConnection, Task> buildTemplate, DbConnection masterConnection)
+    async Task Rebuild(string uniqueness, Func<DbConnection, Task> buildTemplate, DbConnection masterConnection)
     {
         DeleteTemplateFiles();
         await masterConnection.ExecuteCommandAsync(SqlBuilder.GetCreateTemplateCommand(DataFile, LogFile));
@@ -269,7 +276,7 @@ class Wrapper
 
         await masterConnection.ExecuteCommandAsync(SqlBuilder.DetachTemplateCommand);
 
-        File.SetCreationTime(DataFile, timestamp);
+        File.WriteAllText(UniquenessFile, uniqueness);
     }
 
     [Time]

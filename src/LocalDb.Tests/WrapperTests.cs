@@ -38,7 +38,7 @@ end;
         DirectoryFinder.Delete(name);
 
         Wrapper wrapper = new(s => new SqlConnection(s), name, DirectoryFinder.Find(name));
-        wrapper.Start(timestamp, TestDbBuilder.CreateTable);
+        wrapper.Start(uniqueness, TestDbBuilder.CreateTable);
         var connectionString = await wrapper.CreateDatabaseFromTemplate("Simple");
         await using (SqlConnection connection = new(connectionString))
         {
@@ -46,7 +46,7 @@ end;
             await wrapper.CreateDatabaseFromTemplate("Simple");
 
             wrapper = new(s => new SqlConnection(s), name, DirectoryFinder.Find("RecreateWithOpenConnection"));
-            wrapper.Start(timestamp, TestDbBuilder.CreateTable);
+            wrapper.Start(uniqueness, TestDbBuilder.CreateTable);
             await wrapper.CreateDatabaseFromTemplate("Simple");
         }
 
@@ -62,13 +62,13 @@ end;
         DirectoryFinder.Delete(name);
 
         Wrapper wrapper = new(s => new SqlConnection(s), name, DirectoryFinder.Find(name));
-        wrapper.Start(timestamp, TestDbBuilder.CreateTable);
+        wrapper.Start(uniqueness, TestDbBuilder.CreateTable);
         var connectionString = await wrapper.CreateDatabaseFromTemplate("Simple");
         await using (SqlConnection connection = new(connectionString))
         {
             await connection.OpenAsync();
             wrapper = new(s => new SqlConnection(s), name, DirectoryFinder.Find(name));
-            wrapper.Start(timestamp, TestDbBuilder.CreateTable);
+            wrapper.Start(uniqueness, TestDbBuilder.CreateTable);
             await wrapper.CreateDatabaseFromTemplate("Simple");
         }
 
@@ -84,7 +84,7 @@ end;
         DirectoryFinder.Delete(name);
 
         Wrapper wrapper = new(s => new SqlConnection(s), name, DirectoryFinder.Find(name));
-        wrapper.Start(timestamp, TestDbBuilder.CreateTable);
+        wrapper.Start(uniqueness, TestDbBuilder.CreateTable);
         await wrapper.CreateDatabaseFromTemplate("Simple");
         await Verifier.Verify(wrapper.ReadDatabaseState("Simple"));
         LocalDbApi.StopInstance(name);
@@ -105,7 +105,7 @@ end;
                 callbackCalled = true;
                 return Task.CompletedTask;
             });
-        wrapper.Start(timestamp, TestDbBuilder.CreateTable);
+        wrapper.Start(uniqueness, TestDbBuilder.CreateTable);
         await wrapper.CreateDatabaseFromTemplate("Simple");
         Assert.True(callbackCalled);
         LocalDbApi.StopAndDelete(name);
@@ -116,11 +116,11 @@ end;
     {
         var name = "WithFileAndNoInstance";
         Wrapper wrapper = new(s => new SqlConnection(s), name, DirectoryFinder.Find(name));
-        wrapper.Start(timestamp, TestDbBuilder.CreateTable);
+        wrapper.Start(uniqueness, TestDbBuilder.CreateTable);
         await wrapper.AwaitStart();
         wrapper.DeleteInstance();
         wrapper = new(s => new SqlConnection(s), name, DirectoryFinder.Find(name));
-        wrapper.Start(timestamp, TestDbBuilder.CreateTable);
+        wrapper.Start(uniqueness, TestDbBuilder.CreateTable);
         await wrapper.CreateDatabaseFromTemplate("Simple");
         await Verifier.Verify(wrapper.ReadDatabaseState("Simple"));
         LocalDbApi.StopInstance(name);
@@ -134,7 +134,7 @@ end;
         LocalDbApi.CreateInstance(instanceName);
         DirectoryFinder.Delete(instanceName);
         Wrapper wrapper = new(s => new SqlConnection(s), instanceName, DirectoryFinder.Find(instanceName));
-        wrapper.Start(timestamp, TestDbBuilder.CreateTable);
+        wrapper.Start(uniqueness, TestDbBuilder.CreateTable);
         await wrapper.AwaitStart();
         await wrapper.CreateDatabaseFromTemplate("Simple");
 
@@ -142,7 +142,7 @@ end;
         DirectoryFinder.Delete(instanceName);
 
         wrapper = new(s => new SqlConnection(s), instanceName, DirectoryFinder.Find(instanceName));
-        wrapper.Start(timestamp, TestDbBuilder.CreateTable);
+        wrapper.Start(uniqueness, TestDbBuilder.CreateTable);
         await wrapper.AwaitStart();
         await wrapper.CreateDatabaseFromTemplate("Simple");
 
@@ -157,7 +157,7 @@ end;
         LocalDbApi.CreateInstance(name);
         DirectoryFinder.Delete(name);
         Wrapper wrapper = new(s => new SqlConnection(s), name, DirectoryFinder.Find(name));
-        wrapper.Start(timestamp, TestDbBuilder.CreateTable);
+        wrapper.Start(uniqueness, TestDbBuilder.CreateTable);
         await wrapper.AwaitStart();
         await wrapper.CreateDatabaseFromTemplate("Simple");
         await Verifier.Verify(wrapper.ReadDatabaseState("Simple"));
@@ -175,14 +175,14 @@ end;
     }
 
     [Fact]
-    public async Task DefinedTimestamp()
+    public async Task DefinedUniqueness()
     {
-        var name = "DefinedTimestamp";
+        var name = "DefinedUniqueness";
         Wrapper instance2 = new(s => new SqlConnection(s), name, DirectoryFinder.Find(name));
         var dateTime = DateTime.Now;
-        instance2.Start(dateTime, _ => Task.CompletedTask);
+        instance2.Start("theUniqueness", _ => Task.CompletedTask);
         await instance2.AwaitStart();
-        Assert.Equal(dateTime, File.GetCreationTime(instance2.DataFile));
+        Assert.Equal("theUniqueness", await File.ReadAllTextAsync(instance2.UniquenessFile));
     }
 
     [Fact]
@@ -191,7 +191,7 @@ end;
         Wrapper instance2 = new(s => new SqlConnection(s), "WrapperTests", DirectoryFinder.Find("WrapperTests"));
 
         SqlRecording.StartRecording();
-        instance2.Start(timestamp, _ => throw new());
+        instance2.Start(uniqueness, _ => throw new());
         await instance2.AwaitStart();
         var entries = SqlRecording.FinishRecording();
         await Verifier.Verify(entries);
@@ -234,13 +234,13 @@ end;
         });
     }
 
-    static DateTime timestamp = new(2000, 1, 1);
+    static string uniqueness = "";
 
     static WrapperTests()
     {
         LocalDbApi.StopAndDelete("WrapperTests");
         instance = new(s => new SqlConnection(s), "WrapperTests", DirectoryFinder.Find("WrapperTests"));
-        instance.Start(timestamp, TestDbBuilder.CreateTable);
+        instance.Start(uniqueness, TestDbBuilder.CreateTable);
         instance.AwaitStart().GetAwaiter().GetResult();
     }
 }

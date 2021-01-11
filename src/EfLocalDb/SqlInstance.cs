@@ -37,7 +37,7 @@ namespace EfLocalDb
         /// <param name="constructInstance"></param>
         /// <param name="buildTemplate"></param>
         /// <param name="storage">Disk storage convention for where the mdb and the ldf files will be located.</param>
-        /// <param name="timestamp"></param>
+        /// <param name="uniqueness"></param>
         /// <param name="templateSize">The size in MB for the template. Optional.</param>
         /// <param name="existingTemplate">Existing mdb and the ldf files to use when building the template. Optional.</param>
         /// <param name="callback">Option callback that is executed after the template database has been created.</param>
@@ -46,7 +46,7 @@ namespace EfLocalDb
             ConstructInstance<TDbContext> constructInstance,
             TemplateFromContext<TDbContext>? buildTemplate = null,
             Storage? storage = null,
-            DateTime? timestamp = null,
+            string? uniqueness = null,
             ushort templateSize = 3,
             ExistingTemplate? existingTemplate = null,
             Callback<TDbContext>? callback = null,
@@ -55,7 +55,7 @@ namespace EfLocalDb
                 constructInstance,
                 BuildTemplateConverter.Convert(constructInstance, buildTemplate),
                 storage,
-                GetTimestamp(timestamp, buildTemplate),
+                GetUniqueness(uniqueness, buildTemplate),
                 templateSize,
                 existingTemplate,
                 callback,
@@ -70,7 +70,7 @@ namespace EfLocalDb
         /// <param name="constructInstance"></param>
         /// <param name="buildTemplate"></param>
         /// <param name="storage">Disk storage convention for where the mdb and the ldf files will be located. Optional.</param>
-        /// <param name="timestamp"></param>
+        /// <param name="uniqueness"></param>
         /// <param name="templateSize">The size in MB for the template. Optional.</param>
         /// <param name="existingTemplate">Existing mdb and the ldf files to use when building the template. Optional.</param>
         /// <param name="callback">Callback that is executed after the template database has been created. Optional.</param>
@@ -79,14 +79,14 @@ namespace EfLocalDb
             ConstructInstance<TDbContext> constructInstance,
             TemplateFromConnection<TDbContext> buildTemplate,
             Storage? storage = null,
-            DateTime? timestamp = null,
+            string? uniqueness = null,
             ushort templateSize = 3,
             ExistingTemplate? existingTemplate = null,
             Callback<TDbContext>? callback = null,
             Action<SqlServerDbContextOptionsBuilder>? sqlOptionsBuilder = null)
         {
             storage ??= DefaultStorage;
-            var resultTimestamp = GetTimestamp(timestamp, buildTemplate);
+            var resultUniqueness = GetUniqueness(uniqueness, buildTemplate);
             Guard.AgainstNull(nameof(buildTemplate), buildTemplate);
             Guard.AgainstNull(nameof(constructInstance), constructInstance);
             Model = BuildModel(constructInstance);
@@ -127,22 +127,22 @@ namespace EfLocalDb
                 existingTemplate,
                 wrapperCallback);
 
-            Wrapper.Start(resultTimestamp, BuildTemplate);
+            Wrapper.Start(resultUniqueness, BuildTemplate);
         }
 
-        static DateTime GetTimestamp(DateTime? timestamp, Delegate? buildTemplate)
+        static string GetUniqueness(string? uniqueness, Delegate? buildTemplate)
         {
-            if (timestamp != null)
+            if (uniqueness != null)
             {
-                return timestamp.Value;
+                return uniqueness;
             }
 
             if (buildTemplate == null)
             {
-                return Timestamp.LastModified<TDbContext>();
+                return Timestamp.LastModified<TDbContext>().ToUniqueString();
             }
 
-            return Timestamp.LastModified(buildTemplate);
+            return Timestamp.LastModified(buildTemplate).ToUniqueString();
         }
 
         static IModel BuildModel(ConstructInstance<TDbContext> constructInstance)

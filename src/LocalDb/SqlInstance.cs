@@ -18,7 +18,7 @@ namespace LocalDb
             string name,
             Func<DbConnection, Task> buildTemplate,
             string? directory = null,
-            DateTime? timestamp = null,
+            string? uniqueness = null,
             ushort templateSize = 3,
             ExistingTemplate? exitingTemplate = null,
             Func<DbConnection, Task>? callback = null)
@@ -29,24 +29,24 @@ namespace LocalDb
             directory = DirectoryFinder.Find(name);
             DirectoryCleaner.CleanInstance(directory);
             var callingAssembly = Assembly.GetCallingAssembly();
-            var resultTimestamp = GetTimestamp(timestamp, buildTemplate, callingAssembly);
+            var resultUniqueness = GetUniqueness(uniqueness, buildTemplate, callingAssembly);
             Wrapper = new(s => new SqlConnection(s), name, directory, templateSize, exitingTemplate, callback);
-            Wrapper.Start(resultTimestamp, buildTemplate);
+            Wrapper.Start(resultUniqueness, buildTemplate);
         }
 
-        static DateTime GetTimestamp(DateTime? timestamp, Delegate? buildTemplate, Assembly callingAssembly)
+        static string GetUniqueness(string? uniqueness, Delegate? buildTemplate, Assembly callingAssembly)
         {
-            if (timestamp != null)
+            if (uniqueness != null)
             {
-                return timestamp.Value;
+                return uniqueness;
             }
 
             if (buildTemplate != null)
             {
-                return Timestamp.LastModified(buildTemplate);
+                return Timestamp.LastModified(buildTemplate).ToUniqueString();
             }
 
-            return Timestamp.LastModified(callingAssembly);
+            return Timestamp.LastModified(callingAssembly).ToUniqueString();
         }
 
         public void Cleanup()

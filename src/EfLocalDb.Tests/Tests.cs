@@ -163,15 +163,15 @@ public class Tests
     [Fact]
     public async Task Defined_TimeStamp()
     {
-        var dateTime = DateTime.Now;
+        var dateTime = DateTime.Now.ToUniqueString();
         SqlInstance<TestDbContext> instance = new(
             constructInstance: builder => new(builder.Options),
             buildTemplate: async context => { await context.Database.EnsureCreatedAsync(); },
-            timestamp: dateTime,
+            uniqueness: "Defined_TimeStamp",
             storage: Storage.FromSuffix<TestDbContext>("Defined_TimeStamp"));
 
         await using var database = await instance.Build();
-        Assert.Equal(dateTime, File.GetCreationTime(instance.Wrapper.DataFile));
+        Assert.Equal("Defined_TimeStamp", await File.ReadAllTextAsync(instance.Wrapper.UniquenessFile));
     }
 
     [Fact]
@@ -194,16 +194,16 @@ public class Tests
             storage: Storage.FromSuffix<TestDbContext>("Delegate_TimeStamp"));
 
         await using var database = await instance.Build();
-        Assert.Equal(Timestamp.LastModified<Tests>(), File.GetCreationTime(instance.Wrapper.DataFile));
+        Assert.Equal(Timestamp.LastModified<Tests>().ToUniqueString(), await File.ReadAllTextAsync(instance.Wrapper.UniquenessFile));
     }
 
     [Fact]
     public async Task WithRebuildDbContext()
     {
-        var dateTime = DateTime.Now;
+        var uniqueness = DateTime.Now.ToUniqueString();
         SqlInstance<WithRebuildDbContext> instance1 = new(
             constructInstance: builder => new(builder.Options),
-            timestamp: dateTime);
+            uniqueness: uniqueness);
         await using (var database1 = await instance1.Build())
         {
             TestEntity entity = new()
@@ -216,7 +216,7 @@ public class Tests
         SqlInstance<WithRebuildDbContext> instance2 = new(
             constructInstance: builder => new(builder.Options),
             buildTemplate: _ => throw new(),
-            timestamp: dateTime);
+            uniqueness: uniqueness);
         await using var database2 = await instance2.Build();
         Assert.Empty(database2.Context.TestEntities);
     }
